@@ -52,7 +52,7 @@ def handle(update, context):
         update.message.reply_text("خطا در ارسال فایل ❌")
 
 def main():
-    TOKEN = "8218272861:AAH_F2OHTJ-lYAEX9DmOa6Sf3Eq4r7LsV0Y"
+    TOKEN = "8470724978:AAH1Z7eHKrbuw1feJ6TS_UwtgtIx3kHVJYE"
 
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
