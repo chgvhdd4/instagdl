@@ -71,7 +71,7 @@ def handle_message(update, context):
 
 
 def main():
-    TOKEN = os.getenv("TOKEN")  # از Railway می‌گیرد
+    TOKEN = "8218272861:AAH_F2OHTJ-lYAEX9DmOa6Sf3Eq4r7LsV0Y" # از Railway می‌گیرد
 
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
