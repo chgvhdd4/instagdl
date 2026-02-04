@@ -1,104 +1,57 @@
-import os
-import logging
 import requests
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-import re
-import json
-# ---------------- تنظیمات لاگ ----------------
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
-# ---------------- تابع دانلود از اینستاگرام ----------------
-def download_instagram(url):
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
+API_KEY = "6560428021:5e6VTu2Pw3AHtzS@Api_ManagerRoBot"
+API_URL = "https://api.fast-creat.ir/instagram"
 
-        # دریافت HTML صفحه
-        html = requests.get(url, headers=headers).text
+BOT_TOKEN = "8218272861:AAH_F2OHTJ-lYAEX9DmOa6Sf3Eq4r7LsV0Y"   # ← put your bot token here
 
-        # پیدا کردن JSON داخلی اینستاگرام
-        json_data = re.search(r"window\._sharedData = (.*?);</script>", html)
 
-        if not json_data:
-            return None
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Send me an Instagram post URL and I’ll download it for you.")
 
-        data = json.loads(json_data.group(1))
 
-        # مسیر رسیدن به لینک ویدیو/عکس
-        media = data["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
+async def download_instagram(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    url = update.message.text.strip()
 
-        # اگر ویدیو بود
-        if media.get("is_video"):
-            return media["video_url"]
-
-        # اگر عکس بود
-        return media["display_url"]
-
-    except Exception as e:
-        print("Error:", e)
-        return None
-
-# ---------------- هندلر /start ----------------
-def start(update, context):
-    update.message.reply_text(
-        "سلام کیان 👋\nلینک پست، ریل یا عکس اینستاگرام رو بفرست تا برات دانلود کنم."
-    )
-
-# ---------------- هندلر پیام‌ها ----------------
-def handle_message(update, context):
-    text = update.message.text.strip()
-
-    if "instagram.com" not in text:
-        update.message.reply_text("یه لینک معتبر اینستاگرام بفرست 🙂")
+    if "instagram.com" not in url:
+        await update.message.reply_text("Please send a valid Instagram post URL.")
         return
 
-    update.message.reply_text("در حال پردازش لینک...")
+    await update.message.reply_text("Downloading...")
 
-    download_url = download_instagram(text)
-
-    if not download_url:
-        update.message.reply_text("نتونستم دانلود کنم. لینک دیگه امتحان کن.")
-        return
+    api_link = f"{API_URL}?apikey={API_KEY}&type=post2&url={url}"
 
     try:
-        file_resp = requests.get(download_url, stream=True)
-        file_resp.raise_for_status()
+        response = requests.get(api_link).json()
 
-        content_type = file_resp.headers.get("Content-Type", "")
+        if response.get("status") != "ok":
+            await update.message.reply_text("Error downloading the post.")
+            return
 
-        # ارسال ویدیو
-        if "video" in content_type:
-            update.message.reply_video(video=file_resp.content)
+        media_list = response.get("result", [])
 
-        # ارسال عکس
-        elif "image" in content_type:
-            update.message.reply_photo(photo=file_resp.content)
+        for media in media_list:
+            media_url = media.get("url")
 
-        # ارسال فایل ناشناخته
-        else:
-            update.message.reply_document(document=file_resp.content, filename="file")
+            if media_url.endswith(".mp4"):
+                await update.message.reply_video(media_url)
+            else:
+                await update.message.reply_photo(media_url)
 
     except Exception as e:
-        logger.error(e)
-        update.message.reply_text("خطایی در ارسال فایل رخ داد.")
+        await update.message.reply_text(f"An error occurred: {e}")
 
-# ---------------- تابع اصلی ----------------
+
 def main():
-    TOKEN = "8218272861:AAH_F2OHTJ-lYAEX9DmOa6Sf3Eq4r7LsV0Y"  # توکن رو از Railway می‌گیره
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_instagram))
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    app.run_polling()
 
-    updater.start_polling()
-    updater.idle()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
