@@ -2,7 +2,8 @@ import os
 import logging
 import requests
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-
+import re
+import json
 # ---------------- تنظیمات لاگ ----------------
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -11,21 +12,33 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ---------------- تابع دانلود از اینستاگرام ----------------
-def download_instagram(url: str):
-    """
-    استفاده از API رایگان و فعال
-    """
-    api_url = f"https://instagram-downloader-api.vercel.app/?url={url}"
-
+def download_instagram(url):
     try:
-        resp = requests.get(api_url)
-        data = resp.json()
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
 
-        # این API لینک دانلود رو داخل download_url میده
-        if "download_url" in data:
-            return data["download_url"]
+        # دریافت HTML صفحه
+        html = requests.get(url, headers=headers).text
 
-        return None
+        # پیدا کردن JSON داخلی اینستاگرام
+        json_data = re.search(r"window\._sharedData = (.*?);</script>", html)
+
+        if not json_data:
+            return None
+
+        data = json.loads(json_data.group(1))
+
+        # مسیر رسیدن به لینک ویدیو/عکس
+        media = data["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
+
+        # اگر ویدیو بود
+        if media.get("is_video"):
+            return media["video_url"]
+
+        # اگر عکس بود
+        return media["display_url"]
+
     except Exception as e:
         print("Error:", e)
         return None
