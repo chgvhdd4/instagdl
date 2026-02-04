@@ -1,87 +1,67 @@
 import os
-import logging
 import requests
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
 
 API_KEY = "6560428021:5e6VTu2Pw3AHtzS@Api_ManagerRoBot"
 
-def download_instagram(url: str):
-    api_url = f"https://api.fast-creat.ir/instagram?apikey={API_KEY}&type=post2&url={url}"
+def start(update, context):
+    update.message.reply_text("سلام کیان 🌟\nلینک اینستاگرام رو بفرست تا دانلود کنم.")
+
+def download_instagram(url):
+    api = f"https://api.fast-creat.ir/instagram?apikey={API_KEY}&type=post2&url={url}"
 
     try:
-        resp = requests.get(api_url)
-        data = resp.json()
+        r = requests.get(api)
+        data = r.json()
 
         # ساختار API:
         # { "status": true, "result": [ { "url": "..." } ] }
 
-        if "result" in data and len(data["result"]) > 0:
+        if data.get("status") and "result" in data:
             return data["result"][0]["url"]
 
         return None
 
-    except Exception as e:
-        print("Error:", e)
+    except:
         return None
 
+def handle(update, context):
+    link = update.message.text.strip()
 
-def start(update, context):
-    update.message.reply_text(
-        "سلام کیان 👋\nلینک پست یا ریل اینستاگرام رو بفرست تا برات دانلود کنم."
-    )
-
-
-def handle_message(update, context):
-    text = update.message.text.strip()
-
-    if "instagram.com" not in text:
-        update.message.reply_text("یه لینک معتبر اینستاگرام بفرست 🙂")
+    if "instagram.com" not in link:
+        update.message.reply_text("یه لینک معتبر اینستاگرام بده 🙂")
         return
 
-    update.message.reply_text("در حال پردازش لینک...")
+    update.message.reply_text("در حال دانلود...")
 
-    download_url = download_instagram(text)
+    file_url = download_instagram(link)
 
-    if not download_url:
-        update.message.reply_text("نتونستم دانلود کنم. لینک دیگه امتحان کن.")
+    if not file_url:
+        update.message.reply_text("نتونستم دانلود کنم 😕")
         return
 
     try:
-        file_resp = requests.get(download_url, stream=True)
-        file_resp.raise_for_status()
+        file_data = requests.get(file_url).content
 
-        content_type = file_resp.headers.get("Content-Type", "")
-
-        if "video" in content_type:
-            update.message.reply_video(video=file_resp.content)
-        elif "image" in content_type:
-            update.message.reply_photo(photo=file_resp.content)
+        if file_url.endswith(".mp4"):
+            update.message.reply_video(video=file_data)
         else:
-            update.message.reply_document(document=file_resp.content, filename="file")
+            update.message.reply_photo(photo=file_data)
 
-    except Exception as e:
-        logger.error(e)
-        update.message.reply_text("خطایی در ارسال فایل رخ داد.")
-
+    except:
+        update.message.reply_text("خطا در ارسال فایل ❌")
 
 def main():
-    TOKEN = "8218272861:AAH_F2OHTJ-lYAEX9DmOa6Sf3Eq4r7LsV0Y" # از Railway می‌گیرد
+    TOKEN = "8218272861:AAH_F2OHTJ-lYAEX9DmOa6Sf3Eq4r7LsV0Y"
 
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    dp.add_handler(MessageHandler(Filters.text, handle))
 
     updater.start_polling()
     updater.idle()
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
