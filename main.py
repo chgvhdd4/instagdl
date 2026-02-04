@@ -110,8 +110,8 @@ async def mainpart(message: types.Message):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     executor.start_polling(dp, skip_updates=False)        with open(downloaded[1][0], 'rb') as video:
-        with open(downloaded[0], "rb") as comment:
-                await message.answer_video(video, caption=comment.read().decode("utf-8"))
+    with open(downloaded[0], "rb") as comment:
+        await message.answer_video(video, caption=comment.read().decode("utf-8"))
         shutil.rmtree(downloaded[2])
         return
 
