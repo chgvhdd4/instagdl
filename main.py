@@ -7,7 +7,7 @@ import os
 
 load_dotenv()
 
-bot = Bot(os.getenv("TOKEN"))
+bot = Bot("8470724978:AAH1Z7eHKrbuw1feJ6TS_UwtgtIx3kHVJYE")
 dp = Dispatcher(bot)
 
 @dp.message_handler(commands=['start'])
