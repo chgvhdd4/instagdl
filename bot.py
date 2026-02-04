@@ -1,3 +1,4 @@
+import os
 import logging
 import requests
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
@@ -12,35 +13,35 @@ logger = logging.getLogger(__name__)
 # ---------------- تابع دانلود از اینستاگرام ----------------
 def download_instagram(url: str):
     """
-    استفاده از API رایگان برای دانلود محتوا
-    این API لینک دانلود مستقیم برمی‌گردونه
+    استفاده از API رایگان و فعال
     """
-    api_url = f"https://savein.io/api?url={url}"
+    api_url = f"https://instagram-downloader-api.vercel.app/?url={url}"
 
     try:
         resp = requests.get(api_url)
         data = resp.json()
 
-        # اگر لینک دانلود پیدا شد
-        if "url" in data:
-            return data["url"]
+        # این API لینک دانلود رو داخل download_url میده
+        if "download_url" in data:
+            return data["download_url"]
 
         return None
-    except:
+    except Exception as e:
+        print("Error:", e)
         return None
 
 # ---------------- هندلر /start ----------------
 def start(update, context):
     update.message.reply_text(
-        "سلام 👋\nلینک پست، ریل یا عکس اینستاگرام رو بفرست تا برات دانلود کنم."
+        "سلام کیان 👋\nلینک پست، ریل یا عکس اینستاگرام رو بفرست تا برات دانلود کنم."
     )
 
-# ---------------- هندلر پیام‌های متنی ----------------
+# ---------------- هندلر پیام‌ها ----------------
 def handle_message(update, context):
     text = update.message.text.strip()
 
     if "instagram.com" not in text:
-        update.message.reply_text("لطفاً یک لینک معتبر اینستاگرام بفرست 🙂")
+        update.message.reply_text("یه لینک معتبر اینستاگرام بفرست 🙂")
         return
 
     update.message.reply_text("در حال پردازش لینک...")
@@ -48,7 +49,7 @@ def handle_message(update, context):
     download_url = download_instagram(text)
 
     if not download_url:
-        update.message.reply_text("نتونستم فایل رو دانلود کنم. لینک دیگه امتحان کن.")
+        update.message.reply_text("نتونستم دانلود کنم. لینک دیگه امتحان کن.")
         return
 
     try:
@@ -75,7 +76,7 @@ def handle_message(update, context):
 
 # ---------------- تابع اصلی ----------------
 def main():
-    TOKEN = "8218272861:AAH_F2OHTJ-lYAEX9DmOa6Sf3Eq4r7LsV0Y"  # توکن رباتت رو اینجا بذار
+    TOKEN = "8218272861:AAH_F2OHTJ-lYAEX9DmOa6Sf3Eq4r7LsV0Y"  # توکن رو از Railway می‌گیره
 
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
