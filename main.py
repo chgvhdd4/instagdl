@@ -41,13 +41,13 @@ def send_single_post(update, folder):
 
     if video_file:
         update.message.reply_video(open(video_file, "rb"), caption=caption_text[:1024])
-    elif image(open(image_file, "rb"), caption=caption_text[:1024])
+    elif image_file:
+        update.message.reply_photo(open(image_file, "rb"), caption=caption_text[:1024])
     else:
         update.message.reply_text("No media found.")
 
 def download_all_posts(update, username):
     profile = instaloader.Profile.from_username(L.context, username)
-
     update.message.reply_text(f"Downloading all posts of @{username}…")
 
     for post in profile.get_posts():
@@ -75,10 +75,9 @@ def handle_message(update, context):
     text = update.message.text.strip()
     mode = context.user_data.get("mode", None)
 
-    # --- Download post/reel from link ---
+    # Download post/reel from link
     if mode == "post_link" and "instagram.com" in text:
         update.message.reply_text("Downloading…")
-
         clean_folder("post")
 
         try:
@@ -93,7 +92,7 @@ def handle_message(update, context):
         clean_folder("post")
         return
 
-    # --- Download profile picture ---
+    # Download profile picture
     if mode == "profile_pic" and text.startswith("@"):
         username = text[1:]
         update.message.reply_text(f"Downloading profile picture of @{username}…")
@@ -116,7 +115,7 @@ def handle_message(update, context):
         clean_folder(username)
         return
 
-    # --- Download ALL posts of a profile ---
+    # Download ALL posts
     if mode == "all_posts" and text.startswith("@"):
         username = text[1:]
         try:
