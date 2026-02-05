@@ -20,10 +20,16 @@ def main_menu(update):
         [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
 
-def start(update, context):
-    main_menu(update)
+    chat = update.effective_chat
+
+    with open("menu.jpeg", "rb") as photo:
+        update.bot.send_photo(
+            chat_id=chat.id,
+            photo=photo,
+            caption="یکی از گزینه‌ها رو انتخاب کن:",
+            reply_markup=reply_markup
+        )
 
 # ---------------- ابزارها ---------------- #
 
