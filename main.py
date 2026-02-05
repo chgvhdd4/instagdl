@@ -7,7 +7,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 # ---------------- تنظیمات ---------------- #
 
 BOT_TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
-CHANNEL_ID = "@mihan_proje"   # کانالی که کاربر باید عضو باشد
+CHANNEL_ID = "@mihab_proje"   # کانالی که کاربر باید عضو باشد
 
 L = instaloader.Instaloader(
     download_comments=False,
@@ -28,7 +28,7 @@ def force_join(update):
     keyboard = [[InlineKeyboardButton("عضویت در کانال", url=f"https://t.me/{CHANNEL_ID.replace('@','')}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text(
-        "برای استفاده از ربات باید عضو کانال ما بشی ❤️",
+        "برای استفاده از ربات باید عضو کانال بشی ❤️",
         reply_markup=reply_markup
     )
 
@@ -197,128 +197,7 @@ def main():
     updater.idle()
 
 if __name__ == "__main__":
-    main()    caption_text = ""
-
-    for file in os.listdir(folder):
-        path = os.path.join(folder, file)
-
-        if file.endswith(".mp4"):
-            video_file = path
-
-        elif file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-            image_file = path
-
-        elif file.endswith(".txt"):
-            caption_text = open(path, "r", encoding="utf-8").read()
-
-    if video_file:
-        update.message.reply_video(open(video_file, "rb"), caption=caption_text[:1024])
-    elif image_file:
-        update.message.reply_photo(open(image_file, "rb"), caption=caption_text[:1024])
-    else:
-        update.message.reply_text("هیچ مدیایی پیدا نشد!")
-
-# ---------------- دانلود ۱۰ پست آخر ---------------- #
-
-def download_last_10_posts(update, username):
-    profile = instaloader.Profile.from_username(L.context, username)
-    posts = list(profile.get_posts())[:10]  # فقط ۱۰ پست آخر
-
-    update.message.reply_text(f"دارم ۱۰ پست آخر @{username} رو دانلود می‌کنم...")
-
-    for post in posts:
-        clean_folder("post")
-        L.download_post(post, target="post")
-        send_single_post(update, "post")
-
-    clean_folder("post")
-    update.message.reply_text("۱۰ پست آخر ارسال شد ✔️")
-
-# ---------------- دکمه‌ها ---------------- #
-
-def button_handler(update, context):
-    query = update.callback_query
-    query.answer()
-
-    context.user_data["mode"] = query.data
-
-    if query.data == "back":
-        query.edit_message_text("برگشتیم به منو.")
-        main_menu(query)
-        return
-
-    if query.data == "profile_pic":
-        query.edit_message_text("یوزرنیم رو به صورت @username بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
-
-    elif query.data == "last10":
-        query.edit_message_text("یوزرنیم رو بفرست تا ۱۰ پست آخرشو دانلود کنم.\n\n⬅️ برای برگشت /back رو بفرست")
-
-    elif query.data == "post_link":
-        query.edit_message_text("لینک پست یا ریل اینستاگرام رو بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
-
-# ---------------- پیام‌ها ---------------- #
-
-def handle_message(update, context):
-    text = update.message.text.strip()
-    mode = context.user_data.get("mode", None)
-
-    if text == "/back":
-        main_menu(update)
-        return
-
-    # دانلود پست/ریل از لینک
-    if mode == "post_link" and "instagram.com" in text:
-        update.message.reply_text("دارم دانلود می‌کنم، یه لحظه صبر کن...")
-        clean_folder("post")
-
-        try:
-            shortcode = text.split("/")[-2]
-            post = instaloader.Post.from_shortcode(L.context, shortcode)
-            L.download_post(post, target="post")
-            send_single_post(update, "post")
-        except Exception as e:
-            print(e)
-            update.message.reply_text("نتونستم پست رو دانلود کنم!")
-
-        clean_folder("post")
-        return
-
-    # دانلود عکس پروفایل
-    if mode == "profile_pic" and text.startswith("@"):
-        username = text[1:]
-        update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
-
-        clean_folder(username)
-
-        try:
-            L.download_profile(username, profile_pic_only=True)
-
-            for file in os.listdir(username):
-                if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                    update.message.reply_photo(open(os.path.join(username, file), "rb"))
-                    break
-
-            update.message.reply_text("عکس پروفایل ارسال شد ✔️")
-        except Exception as e:
-            print(e)
-            update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
-
-        clean_folder(username)
-        return
-
-    # دانلود ۱۰ پست آخر
-    if mode == "last10" and text.startswith("@"):
-        username = text[1:]
-        try:
-            download_last_10_posts(update, username)
-        except Exception as e:
-            print(e)
-            update.message.reply_text("نتونستم پست‌ها رو دانلود کنم!")
-        return
-
-    update.message.reply_text("اول از منو یکی از گزینه‌ها رو انتخاب کن /start")
-
-# ---------------- اجرای ربات ---------------- #
+    main()- اجرای ربات ---------------- #
 
 def main():
     TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
