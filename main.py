@@ -27,7 +27,7 @@ def main_menu(update):
     else:
         chat_id = update.callback_query.message.chat_id
 
-    with open("menu.jpg", "rb") as photo:
+    with open("menu.jpeg", "rb") as photo:
         update.bot.send_photo(
             chat_id=chat_id,
             photo=photo,
