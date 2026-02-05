@@ -4,7 +4,7 @@ import instaloader
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 
-# ساخت اینستالودر
+# Instaloader instance
 L = instaloader.Instaloader(
     download_comments=False,
     save_metadata=False,
@@ -21,10 +21,15 @@ def main_menu(update):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    chat = update.effective_chat
-    with open("menu.jpeg", "rb") as photo:
+    # تشخیص نوع آپدیت
+    if update.message:
+        chat_id = update.message.chat_id
+    else:
+        chat_id = update.callback_query.message.chat_id
+
+    with open("menu.jpg", "rb") as photo:
         update.bot.send_photo(
-            chat_id=chat.id,
+            chat_id=chat_id,
             photo=photo,
             caption="یکی از گزینه‌ها رو انتخاب کن:",
             reply_markup=reply_markup
@@ -87,7 +92,7 @@ def button_handler(update, context):
 
     if query.data == "back":
         query.edit_message_text("برگشتیم به منو.")
-        main_menu(query)
+        main_menu(update)
         return
 
     if query.data == "profile_pic":
@@ -109,6 +114,7 @@ def handle_message(update, context):
         main_menu(update)
         return
 
+    # دانلود پست/ریل از لینک
     if mode == "post_link" and "instagram.com" in text:
         update.message.reply_text("دارم دانلود می‌کنم، یه لحظه صبر کن...")
         clean_folder("post")
@@ -125,6 +131,7 @@ def handle_message(update, context):
         clean_folder("post")
         return
 
+    # دانلود عکس پروفایل
     if mode == "profile_pic" and text.startswith("@"):
         username = text[1:]
         update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
@@ -147,6 +154,7 @@ def handle_message(update, context):
         clean_folder(username)
         return
 
+    # دانلود ۱۰ پست آخر
     if mode == "last10" and text.startswith("@"):
         username = text[1:]
         try:
@@ -161,7 +169,7 @@ def handle_message(update, context):
 # ---------------- اجرای ربات ---------------- #
 
 def main():
-    TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
+    TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
