@@ -7,7 +7,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 # ---------------- تنظیمات ---------------- #
 
 BOT_TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
-CHANNEL_ID = "@mihab_proje"   # کانالی که کاربر باید عضو باشد
+CHANNEL_ID = "@mihan_proje"   # کانالی که کاربر باید عضو باشد
 
 L = instaloader.Instaloader(
     download_comments=False,
