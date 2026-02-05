@@ -169,7 +169,7 @@ def handle_message(update, context):
 # ---------------- اجرای ربات ---------------- #
 
 def main():
-    TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+    TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
 
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
