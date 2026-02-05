@@ -4,7 +4,7 @@ import instaloader
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 
-# Instaloader instance
+# ساخت اینستالودر
 L = instaloader.Instaloader(
     download_comments=False,
     save_metadata=False,
@@ -22,7 +22,6 @@ def main_menu(update):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     chat = update.effective_chat
-
     with open("menu.jpeg", "rb") as photo:
         update.bot.send_photo(
             chat_id=chat.id,
@@ -30,6 +29,9 @@ def main_menu(update):
             caption="یکی از گزینه‌ها رو انتخاب کن:",
             reply_markup=reply_markup
         )
+
+def start(update, context):
+    main_menu(update)
 
 # ---------------- ابزارها ---------------- #
 
@@ -47,10 +49,8 @@ def send_single_post(update, folder):
 
         if file.endswith(".mp4"):
             video_file = path
-
         elif file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
             image_file = path
-
         elif file.endswith(".txt"):
             caption_text = open(path, "r", encoding="utf-8").read()
 
@@ -65,7 +65,7 @@ def send_single_post(update, folder):
 
 def download_last_10_posts(update, username):
     profile = instaloader.Profile.from_username(L.context, username)
-    posts = list(profile.get_posts())[:10]  # فقط ۱۰ پست آخر
+    posts = list(profile.get_posts())[:10]
 
     update.message.reply_text(f"دارم ۱۰ پست آخر @{username} رو دانلود می‌کنم...")
 
@@ -109,7 +109,6 @@ def handle_message(update, context):
         main_menu(update)
         return
 
-    # دانلود پست/ریل از لینک
     if mode == "post_link" and "instagram.com" in text:
         update.message.reply_text("دارم دانلود می‌کنم، یه لحظه صبر کن...")
         clean_folder("post")
@@ -126,7 +125,6 @@ def handle_message(update, context):
         clean_folder("post")
         return
 
-    # دانلود عکس پروفایل
     if mode == "profile_pic" and text.startswith("@"):
         username = text[1:]
         update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
@@ -149,7 +147,6 @@ def handle_message(update, context):
         clean_folder(username)
         return
 
-    # دانلود ۱۰ پست آخر
     if mode == "last10" and text.startswith("@"):
         username = text[1:]
         try:
