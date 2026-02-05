@@ -11,14 +11,17 @@ L = instaloader.Instaloader(
     post_metadata_txt_pattern=""
 )
 
-def start(update, context):
+def main_menu(update):
     keyboard = [
-        [InlineKeyboardButton("Download Profile Picture", callback_data="profile_pic")],
-        [InlineKeyboardButton("Download All Posts", callback_data="all_posts")],
-        [InlineKeyboardButton("Download Post/Reel from Link", callback_data="post_link")]
+        [InlineKeyboardButton("دانلود عکس پروفایل", callback_data="profile_pic")],
+        [InlineKeyboardButton("دانلود ۱۰ تا پست آخر پروفایل", callback_data="all_posts")],
+        [InlineKeyboardButton("دانلود پست و ریل با لینک", callback_data="post_link")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text("Choose an option:", reply_markup=reply_markup)
+    update.message.reply_text("سلام 👋 چی میخوای؟", reply_markup=reply_markup)
+
+def start(update, context):
+    main_menu(update)
 
 def clean_folder(path):
     if os.path.exists(path):
@@ -46,17 +49,19 @@ def send_single_post(update, folder):
     else:
         update.message.reply_text("No media found.")
 
-def download_all_posts(update, username):
+def download_last_10_posts(update, username):
     profile = instaloader.Profile.from_username(L.context, username)
-    update.message.reply_text(f"Downloading all posts of @{username}…")
+    posts = list(profile.get_posts())[:10]  # LIMIT TO LAST 10 POSTS
 
-    for post in profile.get_posts():
+    update.message.reply_text(f"...{username}دانلود ۱۰ تا پست آخر")
+
+    for post in posts:
         clean_folder("post")
         L.download_post(post, target="post")
         send_single_post(update, "post")
 
     clean_folder("post")
-    update.message.reply_text("All posts sent.")
+    update.message.reply_text("!انجام شد")
 
 def button_handler(update, context):
     query = update.callback_query
@@ -64,20 +69,32 @@ def button_handler(update, context):
 
     context.user_data["mode"] = query.data
 
+    # Back button
+    if query.data == "back":
+        query.edit_message_text("بازگشت به منو")
+        main_menu(query)
+        return
+
+    # Normal menu options
     if query.data == "profile_pic":
-        query.edit_message_text("Send @username to download profile picture.")
+        query.edit_message_text(".نام کاربری مورد نظر را ارسال کنید\n\n⬅️ /back")
     elif query.data == "all_posts":
-        query.edit_message_text("Send @username to download ALL posts.")
+        query.edit_message_text(".نام کاربری مورد نظر را ارسال کنید\n\n⬅️ /back")
     elif query.data == "post_link":
-        query.edit_message_text("Send Instagram post/reel link.")
+        query.edit_message_text(".لینک را ارسال کنید\n\n⬅️ /back")
 
 def handle_message(update, context):
     text = update.message.text.strip()
     mode = context.user_data.get("mode", None)
 
+    # Back command
+    if text == "/back":
+        main_menu(update)
+        return
+
     # Download post/reel from link
     if mode == "post_link" and "instagram.com" in text:
-        update.message.reply_text("Downloading…")
+        update.message.reply_text("...درحال دانلود")
         clean_folder("post")
 
         try:
@@ -87,7 +104,7 @@ def handle_message(update, context):
             send_single_post(update, "post")
         except Exception as e:
             print(e)
-            update.message.reply_text("Failed to download post.")
+            update.message.reply_text(".پست دانلود نشد")
 
         clean_folder("post")
         return
@@ -95,7 +112,7 @@ def handle_message(update, context):
     # Download profile picture
     if mode == "profile_pic" and text.startswith("@"):
         username = text[1:]
-        update.message.reply_text(f"Downloading profile picture of @{username}…")
+        update.message.reply_text(f"{username}در حال دانلود عکس پروفایل")
 
         clean_folder(username)
 
@@ -107,25 +124,25 @@ def handle_message(update, context):
                     update.message.reply_photo(open(f"{username}/{file}", "rb"))
                     break
 
-            update.message.reply_text("Profile picture sent.")
+            update.message.reply_text(".عکس پروفایل ارسال شد")
         except Exception as e:
             print(e)
-            update.message.reply_text("Failed to download profile picture.")
+            update.message.reply_text(".عکس پروفایل دانلود نشد")
 
         clean_folder(username)
         return
 
-    # Download ALL posts
+    # Download last 10 posts
     if mode == "all_posts" and text.startswith("@"):
         username = text[1:]
         try:
-            download_all_posts(update, username)
+            download_last_10_posts(update, username)
         except Exception as e:
             print(e)
-            update.message.reply_text("Failed to download posts.")
+            update.message.reply_text(".پست دانلود نشد")
         return
 
-    update.message.reply_text("Please choose an option with /start.")
+    update.message.reply_text(".بفرست/startبرای انتخاب آپشن")
 
 def main():
     TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
