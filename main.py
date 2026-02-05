@@ -20,13 +20,18 @@ L = instaloader.Instaloader(
 def is_member(bot, user_id):
     try:
         member = bot.get_chat_member(CHANNEL_ID, user_id)
-        return member.status in ["member", "administrator", "creator"]
+        if member.status in ["member", "administrator", "creator"]:
+            return True
+        return False
     except:
         return False
 
 def force_join(update):
-    keyboard = [[InlineKeyboardButton("عضویت در کانال", url=f"https://t.me/{CHANNEL_ID.replace('@','')}")]]
+    keyboard = [
+        [InlineKeyboardButton("عضویت در کانال", url=f"https://t.me/{CHANNEL_ID}".replace("@", ""))]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
     update.message.reply_text(
         "برای استفاده از ربات باید عضو کانال بشی ❤️",
         reply_markup=reply_markup
