@@ -20,20 +20,7 @@ def main_menu(update):
         [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-    # تشخیص نوع آپدیت
-    if update.message:
-        chat_id = update.message.chat_id
-    else:
-        chat_id = update.callback_query.message.chat_id
-
-    with open("menu.jpeg", "rb") as photo:
-        update.bot.send_photo(
-            chat_id=chat_id,
-            photo=photo,
-            caption="یکی از گزینه‌ها رو انتخاب کن:",
-            reply_markup=reply_markup
-        )
+    update.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
 
 def start(update, context):
     main_menu(update)
@@ -54,8 +41,10 @@ def send_single_post(update, folder):
 
         if file.endswith(".mp4"):
             video_file = path
+
         elif file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
             image_file = path
+
         elif file.endswith(".txt"):
             caption_text = open(path, "r", encoding="utf-8").read()
 
@@ -70,7 +59,7 @@ def send_single_post(update, folder):
 
 def download_last_10_posts(update, username):
     profile = instaloader.Profile.from_username(L.context, username)
-    posts = list(profile.get_posts())[:10]
+    posts = list(profile.get_posts())[:10]  # فقط ۱۰ پست آخر
 
     update.message.reply_text(f"دارم ۱۰ پست آخر @{username} رو دانلود می‌کنم...")
 
@@ -92,7 +81,7 @@ def button_handler(update, context):
 
     if query.data == "back":
         query.edit_message_text("برگشتیم به منو.")
-        main_menu(update)
+        main_menu(query)
         return
 
     if query.data == "profile_pic":
