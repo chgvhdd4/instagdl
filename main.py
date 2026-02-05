@@ -18,22 +18,37 @@ def clean_folder(path):
         shutil.rmtree(path)
 
 def send_instagram_post(update, folder):
-    video_file = None
     caption_text = ""
+    media_files = []
 
-    for file in os.listdir(folder):
-        if file.endswith(".mp4"):
-            video_file = os.path.join(folder, file)
-        elif file.endswith(".txt"):
-            caption_text = open(os.path.join(folder, file), "r", encoding="utf-8").read()
+    # Scan folder for media
+    for file in sorted(os.listdir(folder)):
+        path = os.path.join(folder, file)
 
-    if video_file:
-        update.message.reply_video(
-            video=open(video_file, "rb"),
-            caption=caption_text[:1024]
-        )
-    else:
-        update.message.reply_text("No video found in this post.")
+        if file.endswith(".txt"):
+            caption_text = open(path, "r", encoding="utf-8").read()
+
+        elif file.endswith(".mp4") or file.endswith(".jpg"):
+            media_files.append(path)
+
+    # Send carousel items
+    first = True
+    for media in media_files:
+        if media.endswith(".mp4"):
+            update.message.reply_video(
+                video=open(media, "rb"),
+                caption=caption_text[:1024] if first else None
+            )
+        else:
+            update.message.reply_photo(
+                photo=open(media, "rb"),
+                caption=caption_text[:1024] if first else None
+            )
+
+        first = False  # caption only on first item
+
+    if not media_files:
+        update.message.reply_text("No media found in this post.")
 
 def handle_message(update, context):
     text = update.message.text.strip()
