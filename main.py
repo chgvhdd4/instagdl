@@ -197,7 +197,7 @@ def main():
     updater.idle()
 
 if __name__ == "__main__":
-    main()- اجرای ربات ---------------- #
+    main()
 
 def main():
     TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
