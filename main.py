@@ -3,6 +3,7 @@ import shutil
 import instaloader
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
+from profile_downloader import download_profile_pic, clean_folder
 
 # Instaloader instance
 L = instaloader.Instaloader(
