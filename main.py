@@ -12,7 +12,6 @@ L = instaloader.Instaloader(
 )
 
 # ---------------- منوی اصلی ---------------- #
-
 def main_menu(update):
     keyboard = [
         [InlineKeyboardButton("📸 دانلود عکس پروفایل", callback_data="profile_pic")],
@@ -20,8 +19,12 @@ def main_menu(update):
         [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
 
+    # Works for both message and callback_query
+    if update.message:
+        update.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
+    else:
+        update.callback_query.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
 def start(update, context):
     main_menu(update)
 
@@ -81,7 +84,7 @@ def button_handler(update, context):
 
     if query.data == "back":
         query.edit_message_text("برگشتیم به منو.")
-        main_menu(query)
+        main_menu(update)
         return
 
     if query.data == "profile_pic":
@@ -92,7 +95,6 @@ def button_handler(update, context):
 
     elif query.data == "post_link":
         query.edit_message_text("لینک پست یا ریل اینستاگرام رو بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
-
 # ---------------- پیام‌ها ---------------- #
 
 def handle_message(update, context):
