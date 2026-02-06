@@ -123,7 +123,7 @@ def handle_message(update, context):
         return
 
     # دانلود عکس پروفایل
-    if mode == "profile_pic" and text.startswith("@"):
+if mode == "profile_pic" and text.startswith("@"):
     username = text[1:]
     update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
 
