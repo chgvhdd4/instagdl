@@ -4,38 +4,12 @@ import instaloader
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 
-# ---------------- تنظیمات ---------------- #
-
-BOT_TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
-CHANNEL_ID = "@hamsterzk11"   # کانالی که کاربر باید عضو باشد
-
+# Instaloader instance
 L = instaloader.Instaloader(
     download_comments=False,
     save_metadata=False,
     post_metadata_txt_pattern=""
 )
-
-# ---------------- چک عضویت اجباری ---------------- #
-
-def is_member(bot, user_id):
-    try:
-        member = bot.get_chat_member(CHANNEL_ID, user_id)
-        if member.status in ["member", "administrator", "creator"]:
-            return True
-        return False
-    except:
-        return False
-
-def force_join(update):
-    keyboard = [
-        [InlineKeyboardButton("عضویت در کانال", url=f"https://t.me/{CHANNEL_ID}".replace("@", ""))]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    update.message.reply_text(
-        "برای استفاده از ربات باید عضو کانال بشی ❤️",
-        reply_markup=reply_markup
-    )
 
 # ---------------- منوی اصلی ---------------- #
 
@@ -46,23 +20,9 @@ def main_menu(update):
         [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-    chat_id = update.effective_chat.id
-
-    with open("menu.jpg", "rb") as photo:
-        update.bot.send_photo(
-            chat_id=chat_id,
-            photo=photo,
-            caption="یکی از گزینه‌ها رو انتخاب کن:",
-            reply_markup=reply_markup
-        )
+    update.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
 
 def start(update, context):
-    user_id = update.message.from_user.id
-    if not is_member(context.bot, user_id):
-        force_join(update)
-        return
-
     main_menu(update)
 
 # ---------------- ابزارها ---------------- #
@@ -72,32 +32,34 @@ def clean_folder(path):
         shutil.rmtree(path)
 
 def send_single_post(update, folder):
-    video = None
-    image = None
-    caption = ""
+    video_file = None
+    image_file = None
+    caption_text = ""
 
-    for f in os.listdir(folder):
-        p = os.path.join(folder, f)
+    for file in os.listdir(folder):
+        path = os.path.join(folder, file)
 
-        if f.endswith(".mp4"):
-            video = p
-        elif f.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-            image = p
-        elif f.endswith(".txt"):
-            caption = open(p, "r", encoding="utf-8").read()
+        if file.endswith(".mp4"):
+            video_file = path
 
-    if video:
-        update.message.reply_video(open(video, "rb"), caption=caption[:1024])
-    elif image:
-        update.message.reply_photo(open(image, "rb"), caption=caption[:1024])
+        elif file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+            image_file = path
+
+        elif file.endswith(".txt"):
+            caption_text = open(path, "r", encoding="utf-8").read()
+
+    if video_file:
+        update.message.reply_video(open(video_file, "rb"), caption=caption_text[:1024])
+    elif image_file:
+        update.message.reply_photo(open(image_file, "rb"), caption=caption_text[:1024])
     else:
         update.message.reply_text("هیچ مدیایی پیدا نشد!")
 
 # ---------------- دانلود ۱۰ پست آخر ---------------- #
 
-def download_last10(update, username):
+def download_last_10_posts(update, username):
     profile = instaloader.Profile.from_username(L.context, username)
-    posts = list(profile.get_posts())[:10]
+    posts = list(profile.get_posts())[:10]  # فقط ۱۰ پست آخر
 
     update.message.reply_text(f"دارم ۱۰ پست آخر @{username} رو دانلود می‌کنم...")
 
@@ -115,36 +77,35 @@ def button_handler(update, context):
     query = update.callback_query
     query.answer()
 
-    user_id = query.from_user.id
-    if not is_member(context.bot, user_id):
-        query.message.reply_text("اول باید عضو کانال بشی ❤️")
-        return
-
     context.user_data["mode"] = query.data
 
+    if query.data == "back":
+        query.edit_message_text("برگشتیم به منو.")
+        main_menu(query)
+        return
+
     if query.data == "profile_pic":
-        query.edit_message_text("یوزرنیم رو به صورت @username بفرست.")
+        query.edit_message_text("یوزرنیم رو به صورت @username بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
 
     elif query.data == "last10":
-        query.edit_message_text("یوزرنیم رو بفرست تا ۱۰ پست آخرشو دانلود کنم.")
+        query.edit_message_text("یوزرنیم رو بفرست تا ۱۰ پست آخرشو دانلود کنم.\n\n⬅️ برای برگشت /back رو بفرست")
 
     elif query.data == "post_link":
-        query.edit_message_text("لینک پست یا ریل اینستاگرام رو بفرست.")
+        query.edit_message_text("لینک پست یا ریل اینستاگرام رو بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
 
 # ---------------- پیام‌ها ---------------- #
 
 def handle_message(update, context):
-    user_id = update.message.from_user.id
-    if not is_member(context.bot, user_id):
-        force_join(update)
-        return
-
     text = update.message.text.strip()
     mode = context.user_data.get("mode", None)
 
-    # دانلود پست/ریل
+    if text == "/back":
+        main_menu(update)
+        return
+
+    # دانلود پست/ریل از لینک
     if mode == "post_link" and "instagram.com" in text:
-        update.message.reply_text("دارم دانلود می‌کنم...")
+        update.message.reply_text("دارم دانلود می‌کنم، یه لحظه صبر کن...")
         clean_folder("post")
 
         try:
@@ -152,7 +113,8 @@ def handle_message(update, context):
             post = instaloader.Post.from_shortcode(L.context, shortcode)
             L.download_post(post, target="post")
             send_single_post(update, "post")
-        except:
+        except Exception as e:
+            print(e)
             update.message.reply_text("نتونستم پست رو دانلود کنم!")
 
         clean_folder("post")
@@ -161,20 +123,21 @@ def handle_message(update, context):
     # دانلود عکس پروفایل
     if mode == "profile_pic" and text.startswith("@"):
         username = text[1:]
-        update.message.reply_text("دارم عکس پروفایل رو دانلود می‌کنم...")
+        update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
 
         clean_folder(username)
 
         try:
             L.download_profile(username, profile_pic_only=True)
 
-            for f in os.listdir(username):
-                if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                    update.message.reply_photo(open(os.path.join(username, f), "rb"))
+            for file in os.listdir(username):
+                if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                    update.message.reply_photo(open(os.path.join(username, file), "rb"))
                     break
 
             update.message.reply_text("عکس پروفایل ارسال شد ✔️")
-        except:
+        except Exception as e:
+            print(e)
             update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
 
         clean_folder(username)
@@ -183,26 +146,16 @@ def handle_message(update, context):
     # دانلود ۱۰ پست آخر
     if mode == "last10" and text.startswith("@"):
         username = text[1:]
-        download_last10(update, username)
+        try:
+            download_last_10_posts(update, username)
+        except Exception as e:
+            print(e)
+            update.message.reply_text("نتونستم پست‌ها رو دانلود کنم!")
         return
 
     update.message.reply_text("اول از منو یکی از گزینه‌ها رو انتخاب کن /start")
 
 # ---------------- اجرای ربات ---------------- #
-
-def main():
-    updater = Updater(BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
-
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CallbackQueryHandler(button_handler))
-    dp.add_handler(MessageHandler(Filters.text, handle_message))
-
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == "__main__":
-    main()
 
 def main():
     TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
