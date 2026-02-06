@@ -124,27 +124,36 @@ def handle_message(update, context):
 
     # دانلود عکس پروفایل
     if mode == "profile_pic" and text.startswith("@"):
-        username = text[1:]
-        update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
+    username = text[1:]
+    update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
 
-        clean_folder(username)
+    user_id = update.effective_user.id
+    folder = f"profile_{user_id}"
+    clean_folder(folder)
 
-        try:
-            L.download_profile(username, profile_pic_only=True)
+    try:
+        profile = instaloader.Profile.from_username(L.context, username)
 
-            for file in os.listdir(username):
-                if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                    update.message.reply_photo(open(os.path.join(username, file), "rb"))
-                    break
+        # Direct URL to profile picture
+        pic_url = profile.profile_pic_url
 
-            update.message.reply_text("عکس پروفایل ارسال شد ✔️")
-        except Exception as e:
-            print(e)
-            update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
+        # Download manually
+        import requests
+        img_data = requests.get(pic_url).content
 
-        clean_folder(username)
-        return
+        file_path = os.path.join(folder, "profile.jpg")
+        with open(file_path, "wb") as f:
+            f.write(img_data)
 
+        update.message.reply_photo(open(file_path, "rb"))
+        update.message.reply_text("عکس پروفایل ارسال شد ✔️")
+
+    except Exception as e:
+        print(e)
+        update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
+
+    clean_folder(folder)
+    return
     # دانلود ۱۰ پست آخر
     if mode == "last10" and text.startswith("@"):
         username = text[1:]
