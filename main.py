@@ -123,37 +123,38 @@ def handle_message(update, context):
         return
 
     # دانلود عکس پروفایل
-if mode == "profile_pic" and text.startswith("@"):
-    username = text[1:]
-    update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
+# دانلود عکس پروفایل
+    if mode == "profile_pic" and text.startswith("@"):
+        username = text[1:]
+        update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
 
-    user_id = update.effective_user.id
-    folder = f"profile_{user_id}"
-    clean_folder(folder)
+        user_id = update.effective_user.id
+        folder = f"profile_{user_id}"
+        clean_folder(folder)
 
-    try:
-        profile = instaloader.Profile.from_username(L.context, username)
+        try:
+            profile = instaloader.Profile.from_username(L.context, username)
 
-        # Direct URL to profile picture
-        pic_url = profile.profile_pic_url
+            # Direct URL to profile picture
+            pic_url = profile.profile_pic_url
 
-        # Download manually
-        import requests
-        img_data = requests.get(pic_url).content
+            # Download manually
+            import requests
+            img_data = requests.get(pic_url).content
 
-        file_path = os.path.join(folder, "profile.jpg")
-        with open(file_path, "wb") as f:
-            f.write(img_data)
+            file_path = os.path.join(folder, "profile.jpg")
+            with open(file_path, "wb") as f:
+                f.write(img_data)
 
-        update.message.reply_photo(open(file_path, "rb"))
-        update.message.reply_text("عکس پروفایل ارسال شد ✔️")
+            update.message.reply_photo(open(file_path, "rb"))
+            update.message.reply_text("عکس پروفایل ارسال شد ✔️")
 
-    except Exception as e:
-        print(e)
-        update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
+        except Exception as e:
+            print(e)
+            update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
 
-    clean_folder(folder)
-    return
+        clean_folder(folder)
+        return
     # دانلود ۱۰ پست آخر
     if mode == "last10" and text.startswith("@"):
         username = text[1:]
