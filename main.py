@@ -6,8 +6,8 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from profile_downloader import download_profile_pic, clean_folder
 
 # ---------------- BOT CONFIG ---------------- #
-TOKEN = "YOUR_BOT_TOKEN"
-CHANNEL_USERNAME = "@your_required_channel"
+TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
+CHANNEL_USERNAME = "@hamsterzk11"
 
 # Instaloader instance
 L = instaloader.Instaloader(
