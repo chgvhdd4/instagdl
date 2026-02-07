@@ -15,7 +15,6 @@ L = instaloader.Instaloader(
 def main_menu(update):
     keyboard = [
         [InlineKeyboardButton("📸 دانلود عکس پروفایل", callback_data="profile_pic")],
-        [InlineKeyboardButton("📥 دانلود ۱۰ پست آخر", callback_data="last10")],
         [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -58,22 +57,6 @@ def send_single_post(update, folder):
     else:
         update.message.reply_text("هیچ مدیایی پیدا نشد!")
 
-# ---------------- دانلود ۱۰ پست آخر ---------------- #
-
-def download_last_10_posts(update, username):
-    profile = instaloader.Profile.from_username(L.context, username)
-    posts = list(profile.get_posts())[:10]  # فقط ۱۰ پست آخر
-
-    update.message.reply_text(f"دارم ۱۰ پست آخر @{username} رو دانلود می‌کنم...")
-
-    for post in posts:
-        clean_folder("post")
-        L.download_post(post, target="post")
-        send_single_post(update, "post")
-
-    clean_folder("post")
-    update.message.reply_text("۱۰ پست آخر ارسال شد ✔️")
-
 # ---------------- دکمه‌ها ---------------- #
 
 def button_handler(update, context):
@@ -89,10 +72,6 @@ def button_handler(update, context):
 
     if query.data == "profile_pic":
         query.edit_message_text("یوزرنیم رو به صورت @username بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
-
-    elif query.data == "last10":
-        query.edit_message_text("یوزرنیم رو بفرست تا ۱۰ پست آخرشو دانلود کنم.\n\n⬅️ برای برگشت /back رو بفرست")
-
     elif query.data == "post_link":
         query.edit_message_text("لینک پست یا ریل اینستاگرام رو بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
 # ---------------- پیام‌ها ---------------- #
@@ -137,15 +116,6 @@ def handle_message(update, context):
 
     clean_folder(f"profile_{user_id}")
     return
-    # دانلود ۱۰ پست آخر
-    if mode == "last10" and text.startswith("@"):
-        username = text[1:]
-        try:
-            download_last_10_posts(update, username)
-        except Exception as e:
-            print(e)
-            update.message.reply_text("نتونستم پست‌ها رو دانلود کنم!")
-        return
 
     update.message.reply_text("اول از منو یکی از گزینه‌ها رو انتخاب کن /start")
 
