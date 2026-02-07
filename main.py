@@ -52,12 +52,20 @@ def start(update, context):
 
     # Check membership
     if not check_membership(user_id, bot):
-        invite_link = bot.create_chat_invite_link(CHANNEL_USERNAME, member_limit=1).invite_link
+        # Create invite link
+        invite = bot.create_chat_invite_link(CHANNEL_USERNAME, member_limit=1)
+        invite_link = invite.invite_link
+
+        # Button for joining
+        keyboard = [
+            [InlineKeyboardButton("عضویت در کانال 📢", url=invite_link)]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
         update.message.reply_text(
-            f"برای استفاده از ربات باید عضو کانال ما باشی:\n\n"
-            f"[عضویت در کانال]({invite_link})\n\n"
-            "بعد از عضویت دوباره /start رو بزن.",
-            parse_mode=ParseMode.MARKDOWN_V2
+            "برای استفاده از ربات **باید عضو کانال بشید** 👇",
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.MARKDOWN
         )
         return
 
