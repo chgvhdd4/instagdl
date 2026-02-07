@@ -1,9 +1,13 @@
 import os
 import shutil
 import instaloader
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 from profile_downloader import download_profile_pic, clean_folder
+
+# ---------------- BOT CONFIG ---------------- #
+TOKEN = "YOUR_BOT_TOKEN"
+CHANNEL_USERNAME = "@your_required_channel"
 
 # Instaloader instance
 L = instaloader.Instaloader(
@@ -12,23 +16,55 @@ L = instaloader.Instaloader(
     post_metadata_txt_pattern=""
 )
 
-# ---------------- منوی اصلی ---------------- #
+# ---------------- CHANNEL CHECK ---------------- #
+
+def check_membership(user_id, bot):
+    """Synchronous membership check for PTB v13."""
+    try:
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+        if member.status in ["creator", "administrator", "member"]:
+            return True
+        return False
+    except Exception as e:
+        print("Membership check error:", e)
+        return False
+
+# ---------------- MAIN MENU ---------------- #
+
 def main_menu(update):
     keyboard = [
         [InlineKeyboardButton("📸 دانلود عکس پروفایل", callback_data="profile_pic")],
-        [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")]
+        [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")],
+        [InlineKeyboardButton("📥 دانلود ۱۰ پست آخر", callback_data="last10")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Works for both message and callback_query
     if update.message:
         update.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
     else:
         update.callback_query.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
+
+# ---------------- START COMMAND ---------------- #
+
 def start(update, context):
+    user_id = update.effective_user.id
+    bot = context.bot
+
+    # Check membership
+    if not check_membership(user_id, bot):
+        invite_link = bot.create_chat_invite_link(CHANNEL_USERNAME, member_limit=1).invite_link
+        update.message.reply_text(
+            f"برای استفاده از ربات باید عضو کانال ما باشی:\n\n"
+            f"[عضویت در کانال]({invite_link})\n\n"
+            "بعد از عضویت دوباره /start رو بزن.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+        return
+
+    # If member → show menu
     main_menu(update)
 
-# ---------------- ابزارها ---------------- #
+# ---------------- TOOLS ---------------- #
 
 def clean_folder(path):
     if os.path.exists(path):
@@ -58,11 +94,11 @@ def send_single_post(update, folder):
     else:
         update.message.reply_text("هیچ مدیایی پیدا نشد!")
 
-# ---------------- دانلود ۱۰ پست آخر ---------------- #
+# ---------------- DOWNLOAD LAST 10 POSTS ---------------- #
 
 def download_last_10_posts(update, username):
     profile = instaloader.Profile.from_username(L.context, username)
-    posts = list(profile.get_posts())[:10]  # فقط ۱۰ پست آخر
+    posts = list(profile.get_posts())[:10]
 
     update.message.reply_text(f"دارم ۱۰ پست آخر @{username} رو دانلود می‌کنم...")
 
@@ -74,7 +110,7 @@ def download_last_10_posts(update, username):
     clean_folder("post")
     update.message.reply_text("۱۰ پست آخر ارسال شد ✔️")
 
-# ---------------- دکمه‌ها ---------------- #
+# ---------------- BUTTON HANDLER ---------------- #
 
 def button_handler(update, context):
     query = update.callback_query
@@ -95,17 +131,19 @@ def button_handler(update, context):
 
     elif query.data == "post_link":
         query.edit_message_text("لینک پست یا ریل اینستاگرام رو بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
-# ---------------- پیام‌ها ---------------- #
+
+# ---------------- MESSAGE HANDLER ---------------- #
 
 def handle_message(update, context):
     text = update.message.text.strip()
     mode = context.user_data.get("mode", None)
 
+    # Back to menu
     if text == "/back":
         main_menu(update)
         return
 
-    # دانلود پست/ریل از لینک
+    # Download post from link
     if mode == "post_link" and "instagram.com" in text:
         update.message.reply_text("دارم دانلود می‌کنم، یه لحظه صبر کن...")
         clean_folder("post")
@@ -121,21 +159,24 @@ def handle_message(update, context):
 
         clean_folder("post")
         return
+
+    # Download profile picture
     if mode == "profile_pic" and text.startswith("@"):
         username = text[1:]
         update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
         user_id = update.effective_user.id
         file_path = download_profile_pic(username, user_id)
 
-    if file_path:
-        update.message.reply_photo(open(file_path, "rb"))
-        update.message.reply_text("عکس پروفایل ارسال شد ✔️")
-    else:
-        update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
+        if file_path:
+            update.message.reply_photo(open(file_path, "rb"))
+            update.message.reply_text("عکس پروفایل ارسال شد ✔️")
+        else:
+            update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
 
-    clean_folder(f"profile_{user_id}")
-    return
-    # دانلود ۱۰ پست آخر
+        clean_folder(f"profile_{user_id}")
+        return
+
+    # Download last 10 posts
     if mode == "last10" and text.startswith("@"):
         username = text[1:]
         try:
@@ -147,11 +188,9 @@ def handle_message(update, context):
 
     update.message.reply_text("اول از منو یکی از گزینه‌ها رو انتخاب کن /start")
 
-# ---------------- اجرای ربات ---------------- #
+# ---------------- RUN BOT ---------------- #
 
 def main():
-    TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
-
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
 
