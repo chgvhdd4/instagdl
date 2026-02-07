@@ -121,13 +121,11 @@ def handle_message(update, context):
 
         clean_folder("post")
         return
-
     if mode == "profile_pic" and text.startswith("@"):
-    username = text[1:]
-    update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
-
-    user_id = update.effective_user.id
-    file_path = download_profile_pic(username, user_id)
+        username = text[1:]
+        update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
+        user_id = update.effective_user.id
+        file_path = download_profile_pic(username, user_id)
 
     if file_path:
         update.message.reply_photo(open(file_path, "rb"))
