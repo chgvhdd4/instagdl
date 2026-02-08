@@ -9,7 +9,6 @@ from telegram import (
     InlineKeyboardMarkup,
     Update,
 )
-from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     CommandHandler,
