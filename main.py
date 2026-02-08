@@ -24,7 +24,7 @@ def instagram_login():
     except:
         print("No session found. Logging in...")
         USERNAME = "yoyo129684"
-        PASSWORD = "abc1234$"
+        PASSWORD = "1234abcd$"
         L.login(USERNAME, PASSWORD)
         L.save_session_to_file("session")
         print("New session saved.")
