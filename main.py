@@ -209,7 +209,7 @@ if mode == "stories" and text.startswith("@"):
     except Exception as e:
         print(e)
         update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم!")
-    return
+        return
 
     # Download profile picture
     if mode == "profile_pic" and text.startswith("@"):
