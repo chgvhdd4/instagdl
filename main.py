@@ -1,6 +1,7 @@
 import os
 import shutil
 import instaloader
+import threading
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 from profile_downloader import download_profile_pic, clean_folder
@@ -113,40 +114,53 @@ def download_last_10_posts(update, username):
 
 # ---------------- FIXED STORY DOWNLOADER ---------------- #
 def download_stories(update, username):
-    update.message.reply_text(f"دارم استوری‌های @{username} رو دانلود می‌کنم...")
+    update.message.reply_text(f"دارم استوری‌های @{username} رو چک می‌کنم...")
 
-    try:
-        profile = instaloader.Profile.from_username(L.context, username)
-        user_id = profile.userid
+    def run_story_download():
+        try:
+            profile = instaloader.Profile.from_username(L.context, username)
+            user_id = profile.userid
 
-        stories = L.get_stories(userids=[user_id])
+            stories = L.get_stories(userids=[user_id])
+            found = False
 
-        found = False
+            for story in stories:
+                for item in story.get_items():
+                    found = True
+                    clean_folder("story")
+                    L.download_storyitem(item, target="story")
 
-        for story in stories:
-            for item in story.get_items():
-                found = True
-                clean_folder("story")
-                L.download_storyitem(item, target="story")
+                    for file in os.listdir("story"):
+                        path = os.path.join("story", file)
 
-                for file in os.listdir("story"):
-                    path = os.path.join("story", file)
+                        if file.endswith(".mp4"):
+                            update.message.reply_video(open(path, "rb"))
+                        elif file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                            update.message.reply_photo(open(path, "rb"))
 
-                    if file.endswith(".mp4"):
-                        update.message.reply_video(open(path, "rb"))
-                    elif file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-                        update.message.reply_photo(open(path, "rb"))
+            clean_folder("story")
 
-        clean_folder("story")
+            if not found:
+                update.message.reply_text("این کاربر هیچ استوری فعالی ندارد ❌")
+            else:
+                update.message.reply_text("همه استوری‌ها ارسال شد ✔️")
 
-        if not found:
-            update.message.reply_text("این کاربر هیچ استوری فعالی ندارد ❌")
-        else:
-            update.message.reply_text("همه استوری‌ها ارسال شد ✔️")
+        except instaloader.exceptions.QueryReturnedNotFoundException:
+            update.message.reply_text("کاربر پیدا نشد ❌")
 
-    except Exception as e:
-        print("Story error:", e)
-        update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم!")
+        except instaloader.exceptions.BadCredentialsException:
+            update.message.reply_text("مشکل ورود به اینستاگرام. لطفاً دوباره سشن بسازید ❌")
+
+        except instaloader.exceptions.TooManyRequestsException:
+            update.message.reply_text("درخواست زیاد ارسال شده. لطفاً چند دقیقه صبر کنید ❌")
+
+        except Exception as e:
+            print("Story error:", e)
+            update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم ❌")
+
+    # Run Instaloader in a separate thread so bot NEVER freezes
+    thread = threading.Thread(target=run_story_download)
+    thread.start()
 
 # ---------------- BUTTON HANDLER ---------------- #
 def button_handler(update, context):
