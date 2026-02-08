@@ -2,13 +2,10 @@ import os
 import shutil
 import threading
 import instaloader
-import time
-import glob
+import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
-from profile_downloader import download_profile_pic
 
-# ---------------- BOT CONFIG ---------------- #
 TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
 CHANNEL_USERNAME = "@hamsterzk11"
 
@@ -19,12 +16,11 @@ L = instaloader.Instaloader(
     post_metadata_txt_pattern=""
 )
 
-# Load session (no login here)
 try:
     L.load_session_from_file("session")
     print("Session loaded successfully.")
 except:
-    print("⚠ No session found. Story download will fail until you upload a session file.")
+    print("⚠ No session found. Story download may fail.")
 
 # ---------------- UTILITIES ---------------- #
 def clean_folder(path):
@@ -92,27 +88,38 @@ def start(update, context):
 
     main_menu(update)
 
-# ---------------- FIXED STORY DOWNLOADER ---------------- #
+# ---------------- NEW PROFILE PIC FUNCTION (NO INSTALOADER) ---------------- #
 def download_profile_pic(username, user_id):
     try:
-        # Create a clean folder for this user
-        if os.path.exists(username):
-            shutil.rmtree(username)
+        folder = f"profile_{user_id}"
 
-        L = instaloader.Instaloader()
-        L.download_profile(username, profile_pic_only=True)
+        if os.path.exists(folder):
+            shutil.rmtree(folder)
+        os.makedirs(folder)
 
-        # Find the downloaded JPG
-        files = glob.glob(f"{username}/*.jpg")
-        if not files:
+        url = f"https://www.instagram.com/{username}/?__a=1&__d=dis"
+        headers = {"User-Agent": "Mozilla/5.0"}
+
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
             return None
 
-        return files[0]
+        data = r.json()
+        pic_url = data["graphql"]["user"]["profile_pic_url_hd"]
+
+        img_data = requests.get(pic_url, headers=headers).content
+        file_path = f"{folder}/{username}.jpg"
+
+        with open(file_path, "wb") as f:
+            f.write(img_data)
+
+        return file_path
 
     except Exception as e:
         print("Profile picture error:", e)
         return None
-        
+
+# ---------------- STORY DOWNLOADER (unchanged) ---------------- #
 def download_stories(update, username):
     update.message.reply_text(f"دارم استوری‌های @{username} رو چک می‌کنم...")
 
@@ -153,23 +160,9 @@ def download_stories(update, username):
 
         result["done"] = True
 
-    # Run Instaloader in a separate thread
-    t = threading.Thread(target=run_story_download)
-    t.start()
+    threading.Thread(target=run_story_download).start()
 
-    # Timeout: 20 seconds
-    timeout = 20
-    start = time.time()
-
-    while time.time() - start < timeout:
-        if result["done"]:
-            return
-        time.sleep(0.2)
-
-    # If we reach here → Instaloader froze
-    update.message.reply_text("اینستاگرام پاسخ نداد. لطفاً بعداً دوباره امتحان کنید ❌")
-
-# ---------------- DOWNLOAD LAST 10 POSTS ---------------- #
+# ---------------- LAST 10 POSTS (unchanged) ---------------- #
 def download_last_10_posts(update, username):
     profile = instaloader.Profile.from_username(L.context, username)
     posts = list(profile.get_posts())[:10]
@@ -212,6 +205,28 @@ def handle_message(update, context):
         main_menu(update)
         return
 
+    # PROFILE PIC
+    if mode == "profile_pic" and text.startswith("@"):
+        username = text[1:]
+        update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
+
+        file_path = download_profile_pic(username, update.effective_user.id)
+
+        if file_path:
+            update.message.reply_photo(open(file_path, "rb"))
+            update.message.reply_text("عکس پروفایل ارسال شد ✔️")
+        else:
+            update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم ❌")
+
+        clean_folder(f"profile_{update.effective_user.id}")
+        return
+
+    # STORIES
+    if mode == "stories" and text.startswith("@"):
+        username = text[1:]
+        download_stories(update, username)
+        return
+
     # POST FROM LINK
     if mode == "post_link" and "instagram.com" in text:
         update.message.reply_text("دارم دانلود می‌کنم...")
@@ -226,26 +241,6 @@ def handle_message(update, context):
             update.message.reply_text("نتونستم پست رو دانلود کنم!")
 
         clean_folder("post")
-        return
-
-    # STORIES
-    if mode == "stories" and text.startswith("@"):
-        username = text[1:]
-        download_stories(update, username)
-        return
-
-    # PROFILE PIC
-    if mode == "profile_pic" and text.startswith("@"):
-        username = text[1:]
-        update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
-        file_path = download_profile_pic(username, update.effective_user.id)
-        if file_path:
-            update.message.reply_photo(open(file_path, "rb"))
-            update.message.reply_text("عکس پروفایل ارسال شد ✔️")
-        else:
-            update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم ❌")
-        if os.path.exists(username):
-            shutil.rmtree(username)
         return
 
     # LAST 10 POSTS
