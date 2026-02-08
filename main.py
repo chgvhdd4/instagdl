@@ -202,13 +202,13 @@ def handle_message(update, context):
         clean_folder("post")
         return
     # Download stories
-if mode == "stories" and text.startswith("@"):
-    username = text[1:]
-    try:
-        download_stories(update, username)
-    except Exception as e:
-        print(e)
-        update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم!")
+    if mode == "stories" and text.startswith("@"):
+        username = text[1:]
+        try:
+            download_stories(update, username)
+        except Exception as e:
+            print(e)
+            update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم!")
         return
 
     # Download profile picture
