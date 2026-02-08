@@ -1,10 +1,10 @@
 import os
 import shutil
-import instaloader
 import threading
+import instaloader
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
-from profile_downloader import download_profile_pic, clean_folder
+from profile_downloader import download_profile_pic
 
 # ---------------- BOT CONFIG ---------------- #
 TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
@@ -17,58 +17,12 @@ L = instaloader.Instaloader(
     post_metadata_txt_pattern=""
 )
 
-# ---------------- INSTAGRAM LOGIN ---------------- #
-def instagram_login():
-    try:
-        L.load_session_from_file("session")
-        print("Session loaded successfully.")
-    except:
-        print("No session found. Logging in...")
-        USERNAME = "yoyo129684"
-        PASSWORD = "1234abcd$"
-        L.login(USERNAME, PASSWORD)
-        L.save_session_to_file("session")
-        print("New session saved.")
-
-# ---------------- CHANNEL CHECK ---------------- #
-def check_membership(user_id, bot):
-    try:
-        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
-        return member.status in ["creator", "administrator", "member"]
-    except:
-        return False
-
-# ---------------- MAIN MENU ---------------- #
-def main_menu(update):
-    keyboard = [
-        [InlineKeyboardButton("📸 دانلود عکس پروفایل", callback_data="profile_pic")],
-        [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")],
-        [InlineKeyboardButton("📚 دانلود استوری‌ها", callback_data="stories")],
-        [InlineKeyboardButton("🖼 دانلود ۱۰ پست آخر", callback_data="last10")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    if update.message:
-        update.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
-    else:
-        update.callback_query.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
-
-# ---------------- START COMMAND ---------------- #
-def start(update, context):
-    user_id = update.effective_user.id
-    bot = context.bot
-
-    if not check_membership(user_id, bot):
-        invite = bot.create_chat_invite_link(CHANNEL_USERNAME, member_limit=1)
-        keyboard = [[InlineKeyboardButton("عضویت در کانال 📢", url=invite.invite_link)]]
-        update.message.reply_text(
-            "برای استفاده از ربات **باید عضو کانال بشید** 👇",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return
-
-    main_menu(update)
+# Load session (no login here)
+try:
+    L.load_session_from_file("session")
+    print("Session loaded successfully.")
+except:
+    print("⚠ No session found. Story download will fail until you upload a session file.")
 
 # ---------------- UTILITIES ---------------- #
 def clean_folder(path):
@@ -97,20 +51,44 @@ def send_single_post(update, folder):
     else:
         update.message.reply_text("هیچ مدیایی پیدا نشد!")
 
-# ---------------- DOWNLOAD LAST 10 POSTS ---------------- #
-def download_last_10_posts(update, username):
-    profile = instaloader.Profile.from_username(L.context, username)
-    posts = list(profile.get_posts())[:10]
+# ---------------- CHANNEL CHECK ---------------- #
+def check_membership(user_id, bot):
+    try:
+        member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
+        return member.status in ["creator", "administrator", "member"]
+    except:
+        return False
 
-    update.message.reply_text(f"دارم ۱۰ پست آخر @{username} رو دانلود می‌کنم...")
+# ---------------- MAIN MENU ---------------- #
+def main_menu(update):
+    keyboard = [
+        [InlineKeyboardButton("📸 دانلود عکس پروفایل", callback_data="profile_pic")],
+        [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")],
+        [InlineKeyboardButton("📚 دانلود استوری‌ها", callback_data="stories")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    for post in posts:
-        clean_folder("post")
-        L.download_post(post, target="post")
-        send_single_post(update, "post")
+    if update.message:
+        update.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
+    else:
+        update.callback_query.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
 
-    clean_folder("post")
-    update.message.reply_text("۱۰ پست آخر ارسال شد ✔️")
+# ---------------- START COMMAND ---------------- #
+def start(update, context):
+    user_id = update.effective_user.id
+    bot = context.bot
+
+    if not check_membership(user_id, bot):
+        invite = bot.create_chat_invite_link(CHANNEL_USERNAME, member_limit=1)
+        keyboard = [[InlineKeyboardButton("عضویت در کانال 📢", url=invite.invite_link)]]
+        update.message.reply_text(
+            "برای استفاده از ربات **باید عضو کانال بشید** 👇",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    main_menu(update)
 
 # ---------------- FIXED STORY DOWNLOADER ---------------- #
 def download_stories(update, username):
@@ -145,22 +123,35 @@ def download_stories(update, username):
             else:
                 update.message.reply_text("همه استوری‌ها ارسال شد ✔️")
 
+        except instaloader.exceptions.TooManyRequestsException:
+            update.message.reply_text("درخواست زیاد ارسال شده. لطفاً چند دقیقه صبر کنید ❌")
+
         except instaloader.exceptions.QueryReturnedNotFoundException:
             update.message.reply_text("کاربر پیدا نشد ❌")
 
         except instaloader.exceptions.BadCredentialsException:
-            update.message.reply_text("مشکل ورود به اینستاگرام. لطفاً دوباره سشن بسازید ❌")
-
-        except instaloader.exceptions.TooManyRequestsException:
-            update.message.reply_text("درخواست زیاد ارسال شده. لطفاً چند دقیقه صبر کنید ❌")
+            update.message.reply_text("سشن اینستاگرام خراب شده. لطفاً دوباره سشن بسازید ❌")
 
         except Exception as e:
             print("Story error:", e)
             update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم ❌")
 
-    # Run Instaloader in a separate thread so bot NEVER freezes
-    thread = threading.Thread(target=run_story_download)
-    thread.start()
+    threading.Thread(target=run_story_download).start()
+
+# ---------------- DOWNLOAD LAST 10 POSTS ---------------- #
+def download_last_10_posts(update, username):
+    profile = instaloader.Profile.from_username(L.context, username)
+    posts = list(profile.get_posts())[:10]
+
+    update.message.reply_text(f"دارم ۱۰ پست آخر @{username} رو دانلود می‌کنم...")
+
+    for post in posts:
+        clean_folder("post")
+        L.download_post(post, target="post")
+        send_single_post(update, "post")
+
+    clean_folder("post")
+    update.message.reply_text("۱۰ پست آخر ارسال شد ✔️")
 
 # ---------------- BUTTON HANDLER ---------------- #
 def button_handler(update, context):
@@ -168,11 +159,6 @@ def button_handler(update, context):
     query.answer()
 
     context.user_data["mode"] = query.data
-
-    if query.data == "back":
-        query.edit_message_text("برگشتیم به منو.")
-        main_menu(update)
-        return
 
     if query.data == "profile_pic":
         query.edit_message_text("یوزرنیم رو به صورت @username بفرست.\n\n⬅️ /back")
@@ -243,8 +229,6 @@ def handle_message(update, context):
 
 # ---------------- RUN BOT ---------------- #
 def main():
-    instagram_login()
-
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
 
