@@ -9,7 +9,7 @@ from profile_downloader import download_profile_pic, clean_folder
 TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
 CHANNEL_USERNAME = "@hamsterzk11"
 
-# Instaloader instance (NO PRIVATE LOGIN)
+# Instaloader instance
 L = instaloader.Instaloader(
     download_comments=False,
     save_metadata=False,
@@ -19,10 +19,14 @@ L = instaloader.Instaloader(
 # ---------------- CHANNEL CHECK ---------------- #
 
 def check_membership(user_id, bot):
+    """Synchronous membership check for PTB v13."""
     try:
         member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
-        return member.status in ["creator", "administrator", "member"]
-    except:
+        if member.status in ["creator", "administrator", "member"]:
+            return True
+        return False
+    except Exception as e:
+        print("Membership check error:", e)
         return False
 
 # ---------------- MAIN MENU ---------------- #
@@ -31,8 +35,7 @@ def main_menu(update):
     keyboard = [
         [InlineKeyboardButton("📸 دانلود عکس پروفایل", callback_data="profile_pic")],
         [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")],
-        [InlineKeyboardButton("📚 دانلود استوری‌ها", callback_data="stories")],
-        [InlineKeyboardButton("🖼 دانلود ۱۰ پست آخر", callback_data="last10")]
+        [InlineKeyboardButton("📚 دانلود استوری‌ها", callback_data="stories")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -47,20 +50,53 @@ def start(update, context):
     user_id = update.effective_user.id
     bot = context.bot
 
+    # Check membership
     if not check_membership(user_id, bot):
+        # Create invite link
         invite = bot.create_chat_invite_link(CHANNEL_USERNAME, member_limit=1)
-        keyboard = [[InlineKeyboardButton("عضویت در کانال 📢", url=invite.invite_link)]]
+        invite_link = invite.invite_link
+
+        # Button for joining
+        keyboard = [
+            [InlineKeyboardButton("عضویت در کانال 📢", url=invite_link)]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
         update.message.reply_text(
             "برای استفاده از ربات **باید عضو کانال بشید** 👇",
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            reply_markup=reply_markup,
             parse_mode=ParseMode.MARKDOWN
         )
         return
 
+    # If member → show menu
     main_menu(update)
 
 # ---------------- TOOLS ---------------- #
+def download_profile_pic_v2(update, username):
+    try:
+        profile = instaloader.Profile.from_username(L.context, username)
+        profile_pic_url = profile.profile_pic_url
 
+        # Download image bytes
+        response = L.context.requests.get(profile_pic_url, stream=True)
+
+        if response.status_code == 200:
+            from io import BytesIO
+            pic_data = BytesIO(response.content)
+            pic_data.seek(0)
+
+            update.message.reply_photo(pic_data, caption=f"عکس پروفایل @{username}")
+        else:
+            update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
+
+    except instaloader.exceptions.ProfileNotExistsException:
+        update.message.reply_text(f"کاربر @{username} وجود ندارد ❌")
+
+    except Exception as e:
+        print(e)
+        update.message.reply_text("خطا رخ داد. ممکنه پروفایل پرایوت باشه یا محدودیت وجود داشته باشه.")
+        
 def clean_folder(path):
     if os.path.exists(path):
         shutil.rmtree(path)
@@ -75,8 +111,10 @@ def send_single_post(update, folder):
 
         if file.endswith(".mp4"):
             video_file = path
+
         elif file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
             image_file = path
+
         elif file.endswith(".txt"):
             caption_text = open(path, "r", encoding="utf-8").read()
 
@@ -103,8 +141,29 @@ def download_last_10_posts(update, username):
     clean_folder("post")
     update.message.reply_text("۱۰ پست آخر ارسال شد ✔️")
 
-# ---------------- DOWNLOAD STORIES ---------------- #
+# ---------------- BUTTON HANDLER ---------------- #
 
+def button_handler(update, context):
+    query = update.callback_query
+    query.answer()
+
+    context.user_data["mode"] = query.data
+
+    if query.data == "back":
+        query.edit_message_text("برگشتیم به منو.")
+        main_menu(update)
+        return
+
+    if query.data == "profile_pic":
+        query.edit_message_text("یوزرنیم رو به صورت @username بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
+
+    elif query.data == "stories":
+        query.edit_message_text("یوزرنیم رو به صورت @usernameبفرست تا استوری‌هاشو دانلود کنم.\n\n⬅️ برای برگشت /back رو بفرست")
+    
+    elif query.data == "post_link":
+        query.edit_message_text("لینک پست یا ریل اینستاگرام رو بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
+
+# ---------------- MESSAGE HANDLER ---------------- #
 def download_stories(update, username):
     update.message.reply_text(f"دارم استوری‌های @{username} رو دانلود می‌کنم...")
 
@@ -120,6 +179,7 @@ def download_stories(update, username):
                 clean_folder("story")
                 L.download_storyitem(item, target="story")
 
+                # Send story media
                 for file in os.listdir("story"):
                     path = os.path.join("story", file)
 
@@ -138,45 +198,19 @@ def download_stories(update, username):
     except Exception as e:
         print(e)
         update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم!")
-
-# ---------------- BUTTON HANDLER ---------------- #
-
-def button_handler(update, context):
-    query = update.callback_query
-    query.answer()
-
-    context.user_data["mode"] = query.data
-
-    if query.data == "back":
-        query.edit_message_text("برگشتیم به منو.")
-        main_menu(update)
-        return
-
-    if query.data == "profile_pic":
-        query.edit_message_text("یوزرنیم رو به صورت @username بفرست.\n\n⬅️ /back")
-
-    elif query.data == "stories":
-        query.edit_message_text("یوزرنیم رو به صورت @username بفرست تا استوری‌هاشو دانلود کنم.\n\n⬅️ /back")
-
-    elif query.data == "post_link":
-        query.edit_message_text("لینک پست یا ریل اینستاگرام رو بفرست.\n\n⬅️ /back")
-
-    elif query.data == "last10":
-        query.edit_message_text("یوزرنیم رو به صورت @username بفرست تا ۱۰ پست آخر رو دانلود کنم.\n\n⬅️ /back")
-
-# ---------------- MESSAGE HANDLER ---------------- #
-
+        
 def handle_message(update, context):
     text = update.message.text.strip()
     mode = context.user_data.get("mode", None)
 
+    # Back to menu
     if text == "/back":
         main_menu(update)
         return
 
-    # POST FROM LINK
+    # Download post from link
     if mode == "post_link" and "instagram.com" in text:
-        update.message.reply_text("دارم دانلود می‌کنم...")
+        update.message.reply_text("دارم دانلود می‌کنم، یه لحظه صبر کن...")
         clean_folder("post")
 
         try:
@@ -184,42 +218,41 @@ def handle_message(update, context):
             post = instaloader.Post.from_shortcode(L.context, shortcode)
             L.download_post(post, target="post")
             send_single_post(update, "post")
-        except:
+        except Exception as e:
+            print(e)
             update.message.reply_text("نتونستم پست رو دانلود کنم!")
 
         clean_folder("post")
         return
-
-    # STORIES
+    # Download stories
     if mode == "stories" and text.startswith("@"):
         username = text[1:]
-        download_stories(update, username)
+        try:
+            download_stories(update, username)
+        except Exception as e:
+            print(e)
+            update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم!")
         return
 
-    # PROFILE PIC
+    # Download profile picture
     if mode == "profile_pic" and text.startswith("@"):
         username = text[1:]
         update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
-        user_id = update.effective_user.id
-        file_path = download_profile_pic(username, user_id)
-
-        if file_path:
-            update.message.reply_photo(open(file_path, "rb"))
-            update.message.reply_text("عکس پروفایل ارسال شد ✔️")
-        else:
-            update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
-
-        clean_folder(f"profile_{user_id}")
+        download_profile_pic_v2(update, username)
         return
 
-    # LAST 10 POSTS
+    # Download last 10 posts
     if mode == "last10" and text.startswith("@"):
         username = text[1:]
-        download_last_10_posts(update, username)
+        try:
+            download_last_10_posts(update, username)
+        except Exception as e:
+            print(e)
+            update.message.reply_text("نتونستم پست‌ها رو دانلود کنم!")
         return
+    
 
     update.message.reply_text("اول از منو یکی از گزینه‌ها رو انتخاب کن /start")
-
 # ---------------- RUN BOT ---------------- #
 
 def main():
@@ -235,3 +268,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
