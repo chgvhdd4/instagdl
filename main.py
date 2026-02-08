@@ -3,6 +3,7 @@ import shutil
 import threading
 import instaloader
 import time
+import glob
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 from profile_downloader import download_profile_pic
@@ -92,7 +93,26 @@ def start(update, context):
     main_menu(update)
 
 # ---------------- FIXED STORY DOWNLOADER ---------------- #
+def download_profile_pic(username, user_id):
+    try:
+        # Create a clean folder for this user
+        if os.path.exists(username):
+            shutil.rmtree(username)
 
+        L = instaloader.Instaloader()
+        L.download_profile(username, profile_pic_only=True)
+
+        # Find the downloaded JPG
+        files = glob.glob(f"{username}/*.jpg")
+        if not files:
+            return None
+
+        return files[0]
+
+    except Exception as e:
+        print("Profile picture error:", e)
+        return None
+        
 def download_stories(update, username):
     update.message.reply_text(f"دارم استوری‌های @{username} رو چک می‌کنم...")
 
@@ -218,16 +238,14 @@ def handle_message(update, context):
     if mode == "profile_pic" and text.startswith("@"):
         username = text[1:]
         update.message.reply_text(f"دارم عکس پروفایل @{username} رو دانلود می‌کنم...")
-        user_id = update.effective_user.id
-        file_path = download_profile_pic(username, user_id)
-
+        file_path = download_profile_pic(username, update.effective_user.id)
         if file_path:
             update.message.reply_photo(open(file_path, "rb"))
             update.message.reply_text("عکس پروفایل ارسال شد ✔️")
         else:
-            update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم!")
-
-        clean_folder(f"profile_{user_id}")
+            update.message.reply_text("نتونستم عکس پروفایل رو دانلود کنم ❌")
+        if os.path.exists(username):
+            shutil.rmtree(username)
         return
 
     # LAST 10 POSTS
