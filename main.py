@@ -35,7 +35,7 @@ def main_menu(update):
     keyboard = [
         [InlineKeyboardButton("📸 دانلود عکس پروفایل", callback_data="profile_pic")],
         [InlineKeyboardButton("🔗 دانلود پست/ریل از لینک", callback_data="post_link")],
-        [InlineKeyboardButton("📥 دانلود ۱۰ پست آخر", callback_data="last10")]
+        [InlineKeyboardButton("📚 دانلود استوری‌ها", callback_data="stories")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -134,14 +134,48 @@ def button_handler(update, context):
     if query.data == "profile_pic":
         query.edit_message_text("یوزرنیم رو به صورت @username بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
 
-    elif query.data == "last10":
-        query.edit_message_text("یوزرنیم رو بفرست تا ۱۰ پست آخرشو دانلود کنم.\n\n⬅️ برای برگشت /back رو بفرست")
-
+    elif query.data == "stories":
+        query.edit_message_text("یوزرنیم رو به صورت @usernameبفرست تا استوری‌هاشو دانلود کنم.\n\n⬅️ برای برگشت /back رو بفرست")
+    
     elif query.data == "post_link":
         query.edit_message_text("لینک پست یا ریل اینستاگرام رو بفرست.\n\n⬅️ برای برگشت /back رو بفرست")
 
 # ---------------- MESSAGE HANDLER ---------------- #
+def download_stories(update, username):
+    update.message.reply_text(f"دارم استوری‌های @{username} رو دانلود می‌کنم...")
 
+    try:
+        profile = instaloader.Profile.from_username(L.context, username)
+        stories = L.get_stories(userids=[profile.userid])
+
+        found = False
+
+        for story in stories:
+            for item in story.get_items():
+                found = True
+                clean_folder("story")
+                L.download_storyitem(item, target="story")
+
+                # Send story media
+                for file in os.listdir("story"):
+                    path = os.path.join("story", file)
+
+                    if file.endswith(".mp4"):
+                        update.message.reply_video(open(path, "rb"))
+                    elif file.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                        update.message.reply_photo(open(path, "rb"))
+
+        clean_folder("story")
+
+        if not found:
+            update.message.reply_text("این کاربر هیچ استوری فعالی ندارد ❌")
+        else:
+            update.message.reply_text("همه استوری‌ها ارسال شد ✔️")
+
+    except Exception as e:
+        print(e)
+        update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم!")
+        
 def handle_message(update, context):
     text = update.message.text.strip()
     mode = context.user_data.get("mode", None)
@@ -167,6 +201,15 @@ def handle_message(update, context):
 
         clean_folder("post")
         return
+    # Download stories
+if mode == "stories" and text.startswith("@"):
+    username = text[1:]
+    try:
+        download_stories(update, username)
+    except Exception as e:
+        print(e)
+        update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم!")
+    return
 
     # Download profile picture
     if mode == "profile_pic" and text.startswith("@"):
@@ -193,9 +236,9 @@ def handle_message(update, context):
             print(e)
             update.message.reply_text("نتونستم پست‌ها رو دانلود کنم!")
         return
+    
 
     update.message.reply_text("اول از منو یکی از گزینه‌ها رو انتخاب کن /start")
-
 # ---------------- RUN BOT ---------------- #
 
 def main():
