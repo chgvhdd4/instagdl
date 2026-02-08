@@ -9,15 +9,27 @@ from profile_downloader import download_profile_pic, clean_folder
 TOKEN = "8508847587:AAFgHA1RSi7TUlVOQ8gRtr-wiJQaaC04tM8"
 CHANNEL_USERNAME = "@hamsterzk11"
 
-# Instaloader instance (NO PRIVATE LOGIN)
+# ---------------- INSTALOADER INSTANCE ---------------- #
 L = instaloader.Instaloader(
     download_comments=False,
     save_metadata=False,
     post_metadata_txt_pattern=""
 )
 
-# ---------------- CHANNEL CHECK ---------------- #
+# ---------------- INSTAGRAM LOGIN ---------------- #
+def instagram_login():
+    try:
+        L.load_session_from_file("session")
+        print("Session loaded successfully.")
+    except:
+        print("No session found. Logging in...")
+        USERNAME = "hotdog.ab11"
+        PASSWORD = "abc1234$"
+        L.login(USERNAME, PASSWORD)
+        L.save_session_to_file("session")
+        print("New session saved.")
 
+# ---------------- CHANNEL CHECK ---------------- #
 def check_membership(user_id, bot):
     try:
         member = bot.get_chat_member(CHANNEL_USERNAME, user_id)
@@ -26,7 +38,6 @@ def check_membership(user_id, bot):
         return False
 
 # ---------------- MAIN MENU ---------------- #
-
 def main_menu(update):
     keyboard = [
         [InlineKeyboardButton("📸 دانلود عکس پروفایل", callback_data="profile_pic")],
@@ -42,7 +53,6 @@ def main_menu(update):
         update.callback_query.message.reply_text("یکی از گزینه‌ها رو انتخاب کن:", reply_markup=reply_markup)
 
 # ---------------- START COMMAND ---------------- #
-
 def start(update, context):
     user_id = update.effective_user.id
     bot = context.bot
@@ -59,8 +69,7 @@ def start(update, context):
 
     main_menu(update)
 
-# ---------------- TOOLS ---------------- #
-
+# ---------------- UTILITIES ---------------- #
 def clean_folder(path):
     if os.path.exists(path):
         shutil.rmtree(path)
@@ -88,7 +97,6 @@ def send_single_post(update, folder):
         update.message.reply_text("هیچ مدیایی پیدا نشد!")
 
 # ---------------- DOWNLOAD LAST 10 POSTS ---------------- #
-
 def download_last_10_posts(update, username):
     profile = instaloader.Profile.from_username(L.context, username)
     posts = list(profile.get_posts())[:10]
@@ -103,14 +111,15 @@ def download_last_10_posts(update, username):
     clean_folder("post")
     update.message.reply_text("۱۰ پست آخر ارسال شد ✔️")
 
-# ---------------- DOWNLOAD STORIES ---------------- #
-
+# ---------------- FIXED STORY DOWNLOADER ---------------- #
 def download_stories(update, username):
     update.message.reply_text(f"دارم استوری‌های @{username} رو دانلود می‌کنم...")
 
     try:
         profile = instaloader.Profile.from_username(L.context, username)
-        stories = L.get_stories(userids=[profile.userid])
+        user_id = profile.userid
+
+        stories = L.get_stories(userids=[user_id])
 
         found = False
 
@@ -136,11 +145,10 @@ def download_stories(update, username):
             update.message.reply_text("همه استوری‌ها ارسال شد ✔️")
 
     except Exception as e:
-        print(e)
+        print("Story error:", e)
         update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم!")
 
 # ---------------- BUTTON HANDLER ---------------- #
-
 def button_handler(update, context):
     query = update.callback_query
     query.answer()
@@ -165,7 +173,6 @@ def button_handler(update, context):
         query.edit_message_text("یوزرنیم رو به صورت @username بفرست تا ۱۰ پست آخر رو دانلود کنم.\n\n⬅️ /back")
 
 # ---------------- MESSAGE HANDLER ---------------- #
-
 def handle_message(update, context):
     text = update.message.text.strip()
     mode = context.user_data.get("mode", None)
@@ -221,8 +228,9 @@ def handle_message(update, context):
     update.message.reply_text("اول از منو یکی از گزینه‌ها رو انتخاب کن /start")
 
 # ---------------- RUN BOT ---------------- #
-
 def main():
+    instagram_login()
+
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
 
