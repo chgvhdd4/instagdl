@@ -92,9 +92,6 @@ def start(update, context):
     main_menu(update)
 
 # ---------------- FIXED STORY DOWNLOADER ---------------- #
-import instaloader
-import threading
-import time
 
 def download_stories(update, username):
     update.message.reply_text(f"دارم استوری‌های @{username} رو چک می‌کنم...")
