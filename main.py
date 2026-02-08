@@ -2,6 +2,7 @@ import os
 import shutil
 import threading
 import instaloader
+import time
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 from profile_downloader import download_profile_pic
@@ -91,8 +92,14 @@ def start(update, context):
     main_menu(update)
 
 # ---------------- FIXED STORY DOWNLOADER ---------------- #
+import instaloader
+import threading
+import time
+
 def download_stories(update, username):
     update.message.reply_text(f"دارم استوری‌های @{username} رو چک می‌کنم...")
+
+    result = {"done": False}
 
     def run_story_download():
         try:
@@ -123,20 +130,27 @@ def download_stories(update, username):
             else:
                 update.message.reply_text("همه استوری‌ها ارسال شد ✔️")
 
-        except instaloader.exceptions.TooManyRequestsException:
-            update.message.reply_text("درخواست زیاد ارسال شده. لطفاً چند دقیقه صبر کنید ❌")
-
-        except instaloader.exceptions.QueryReturnedNotFoundException:
-            update.message.reply_text("کاربر پیدا نشد ❌")
-
-        except instaloader.exceptions.BadCredentialsException:
-            update.message.reply_text("سشن اینستاگرام خراب شده. لطفاً دوباره سشن بسازید ❌")
-
         except Exception as e:
             print("Story error:", e)
             update.message.reply_text("نتونستم استوری‌ها رو دانلود کنم ❌")
 
-    threading.Thread(target=run_story_download).start()
+        result["done"] = True
+
+    # Run Instaloader in a separate thread
+    t = threading.Thread(target=run_story_download)
+    t.start()
+
+    # Timeout: 20 seconds
+    timeout = 20
+    start = time.time()
+
+    while time.time() - start < timeout:
+        if result["done"]:
+            return
+        time.sleep(0.2)
+
+    # If we reach here → Instaloader froze
+    update.message.reply_text("اینستاگرام پاسخ نداد. لطفاً بعداً دوباره امتحان کنید ❌")
 
 # ---------------- DOWNLOAD LAST 10 POSTS ---------------- #
 def download_last_10_posts(update, username):
